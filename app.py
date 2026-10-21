@@ -79,7 +79,6 @@ COLS = {
 }
 
 # Atualizado com os links das imagens (Shape configurado como 'image')
-# Atualizado com os links das imagens (Shape configurado como 'image')
 ELEMENTS = [
     ("claim", "Afirmação (claim)", "#D92D20", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/afir-removebg-preview.png"),
     ("data", "Dado", "#4F46E5", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/dado-removebg-preview.png"),
@@ -213,7 +212,28 @@ def main():
     else:
         graph_df = filtered
 
-    st.markdown("### Rede argumentativa")
+    st.markdown("### Rede Argumentativa Interativa")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        with st.expander("🧠 Entenda o Modelo de Toulmin", expanded=False):
+            st.markdown("""
+            Esta visualização mapeia debates utilizando o **Modelo de Toulmin**, desconstruindo argumentos em componentes lógicos:
+            * **Afirmação (Claim):** A tese central que está a ser defendida.
+            * **Dado (Data):** Os fatos ou evidências que servem de base.
+            * **Justificativa (Warrant):** A premissa lógica que conecta o Dado à Afirmação.
+            * **Apoio (Backing):** Conhecimento adicional que valida a Justificativa.
+            * **Refutação (Rebuttal):** Objeções ou exceções que limitam a Afirmação.
+            * **Qualificador (Qualifier):** Expressa o grau de certeza (ex: "provavelmente").
+            """)
+    with col2:
+        with st.expander("🖱️ Como interagir com o grafo", expanded=False):
+            st.markdown("""
+            * **Zoom e Pan:** Use a roda do rato para aproximar/afastar. Clique no fundo e arraste para mover a câmara.
+            * **Inspecionar:** Posicione o cursor sobre qualquer nó para ler o texto original e a justificativa da anotação.
+            * **Reorganizar:** Clique e arraste um nó para alterar o layout. A física do sistema reajustará as ligações automaticamente.
+            * **Foco:** Clique num nó específico para escurecer o resto da rede e focar apenas nas suas conexões diretas.
+            """)
 
     LEGEND_HTML = """
     <style>
@@ -262,8 +282,16 @@ def main():
             </div>
             <span class="badge" style="color: #0891B2; background: rgba(8, 145, 178, 0.1);">Ciano</span>
         </div>
+        <div class="legend-card">
+            <div class="legend-icon-text">
+                <div class="legend-icon" style="background-color: #F3E8FF; color: #9333EA;">⚖️</div>
+                <div><p class="legend-title">Qualificador (Qualifier)</p><p class="legend-desc">O grau de certeza ou força da afirmação.</p></div>
+            </div>
+            <span class="badge" style="color: #9333EA; background: rgba(147, 51, 234, 0.1);">Roxo</span>
+        </div>
     </div>
     """
+   
     st.markdown(LEGEND_HTML, unsafe_allow_html=True)
 
     net = Network(height="590px", width="100%", bgcolor="#FFFFFF", font_color="#101828",
