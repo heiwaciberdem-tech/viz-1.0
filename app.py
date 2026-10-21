@@ -85,7 +85,7 @@ ELEMENTS = [
     ("warrant", "Justificativa (warrant)", "#16A34A", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/download.png"),
     ("rebuttal", "Refutação (rebuttal)", "#D97706", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/refut-removebg-preview.png"),
     ("backing", "Apoio adicional (backing)", "#0891B2", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/download%20(1).png"),
-    ("qualifier", "Qualificador", "#9333EA", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/Gemini_Generated_Image_9mm63g9mm63g9mm6.jpg"),
+    ("qualifier", "Qualificador", "#9333EA", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/Gemini_Generated_Image_9mm63g9mm63g9mm6-removebg-preview%20(1).png"),
 ]
 
 def find_col(df, key):
