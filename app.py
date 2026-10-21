@@ -241,7 +241,8 @@ def main():
     .legend-card { display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid #1F2937; }
     .legend-card:last-child { border-bottom: none; padding-bottom: 0; }
     .legend-icon-text { display: flex; align-items: center; gap: 16px; }
-    .legend-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold;}
+    .legend-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+    .legend-icon img { width: 100%; height: 100%; object-fit: contain; }
     .legend-title { color: #F9FAFB; font-weight: 600; font-size: 0.95rem; margin: 0; }
     .legend-desc { color: #9CA3AF; font-size: 0.85rem; margin: 0; }
     .badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
@@ -249,49 +250,48 @@ def main():
     <div class="legend-container">
         <div class="legend-card">
             <div class="legend-icon-text">
-                <div class="legend-icon" style="background-color: #FFEFEF; color: #D92D20;">💬</div>
+                <div class="legend-icon"><img src="https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/afir-removebg-preview.png"></div>
                 <div><p class="legend-title">Afirmação (Claim)</p><p class="legend-desc">A posição defendida no argumento.</p></div>
             </div>
             <span class="badge" style="color: #D92D20; background: rgba(217, 45, 32, 0.1);">Vermelho</span>
         </div>
         <div class="legend-card">
             <div class="legend-icon-text">
-                <div class="legend-icon" style="background-color: #EEF2FF; color: #4F46E5;">📊</div>
+                <div class="legend-icon"><img src="https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/dado-removebg-preview.png"></div>
                 <div><p class="legend-title">Dado</p><p class="legend-desc">A evidência ou informação que sustenta a afirmação.</p></div>
             </div>
             <span class="badge" style="color: #4F46E5; background: rgba(79, 70, 229, 0.1);">Azul</span>
         </div>
         <div class="legend-card">
             <div class="legend-icon-text">
-                <div class="legend-icon" style="background-color: #ECFDF5; color: #059669;">🔗</div>
+                <div class="legend-icon"><img src="https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/download.png"></div>
                 <div><p class="legend-title">Justificativa (Warrant)</p><p class="legend-desc">A lógica que conecta o dado à afirmação.</p></div>
             </div>
             <span class="badge" style="color: #059669; background: rgba(5, 150, 105, 0.1);">Verde</span>
         </div>
         <div class="legend-card">
             <div class="legend-icon-text">
-                <div class="legend-icon" style="background-color: #FFFBEB; color: #D97706;">🛡️</div>
+                <div class="legend-icon"><img src="https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/refut-removebg-preview.png"></div>
                 <div><p class="legend-title">Refutação (Rebuttal)</p><p class="legend-desc">Uma condição ou objeção que desafia a afirmação.</p></div>
             </div>
             <span class="badge" style="color: #D97706; background: rgba(217, 119, 6, 0.1);">Âmbar</span>
         </div>
         <div class="legend-card">
             <div class="legend-icon-text">
-                <div class="legend-icon" style="background-color: #ECFEFF; color: #0891B2;">📖</div>
+                <div class="legend-icon"><img src="https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/download%20(1).png"></div>
                 <div><p class="legend-title">Apoio adicional (Backing)</p><p class="legend-desc">O fundamento que reforça a justificativa.</p></div>
             </div>
             <span class="badge" style="color: #0891B2; background: rgba(8, 145, 178, 0.1);">Ciano</span>
         </div>
         <div class="legend-card">
             <div class="legend-icon-text">
-                <div class="legend-icon" style="background-color: #F3E8FF; color: #9333EA;">⚖️</div>
+                <div class="legend-icon"><img src="https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/Gemini_Generated_Image_9mm63g9mm63g9mm6.jpg"></div>
                 <div><p class="legend-title">Qualificador (Qualifier)</p><p class="legend-desc">O grau de certeza ou força da afirmação.</p></div>
             </div>
             <span class="badge" style="color: #9333EA; background: rgba(147, 51, 234, 0.1);">Roxo</span>
         </div>
     </div>
-    """
-   
+    """   
     st.markdown(LEGEND_HTML, unsafe_allow_html=True)
 
     net = Network(height="590px", width="100%", bgcolor="#FFFFFF", font_color="#101828",
@@ -335,11 +335,12 @@ def main():
 
         claim_id = f"claim::{row_index}"
         claim_label = short(claim_value, 38) if show_labels else ""
-        claim_title = f"<b>Afirmação (claim)</b><br>{html.escape(claim_value)}"
+        
+        # Correção do tooltip: texto simples com quebras de linha (\n)
+        claim_title = f"Afirmação (claim):\n{claim_value}"
         if text_col and clean_value(row[text_col]):
-            claim_title += f"<br><br><b>Texto original</b><br>{html.escape(clean_value(row[text_col]))}"
+            claim_title += f"\n\nTexto original:\n{clean_value(row[text_col])}"
             
-        # Inserção da Imagem no Nó Central
         _, _, _, shape, img_url = ELEMENTS[0]
         net.add_node(claim_id, label=claim_label, title=claim_title, shape=shape, image=img_url, size=35)
         added_nodes.add(claim_id)
@@ -352,11 +353,12 @@ def main():
             node_label = short(value, 31) if show_labels else ""
             reason_col = find_col(df, reason_keys[kind])
             reason = clean_value(row[reason_col]) if reason_col else ""
-            title = f"<b>{html.escape(label)}</b><br>{html.escape(value)}"
+            
+            # Correção do tooltip para os nós periféricos
+            title = f"{label}:\n{value}"
             if reason:
-                title += f"<br><br><b>Justificativa da anotação</b><br>{html.escape(reason)}"
+                title += f"\n\nJustificativa da anotação:\n{reason}"
                 
-            # Inserção da Imagem nos Nós Periféricos
             if img_url:
                 net.add_node(node_id, label=node_label, title=title, shape="image", image=img_url, size=25)
             else:
