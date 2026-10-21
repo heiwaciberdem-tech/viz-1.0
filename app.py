@@ -20,7 +20,7 @@ if uploaded_file is not None:
     df_filtered = df[df['Conversation_id'].astype(str).isin(selected_conv)]
     
     # 2. Configuração Avançada da Rede (Menus interativos e física)
-    net = Network(height="650px", width="100%", bgcolor="#ffffff", font_color="black", select_menu=True)
+    net = Network(height="650px", width="100%", bgcolor="#ffffff", font_color="black", select_menu=True, cdn_resources='remote')
     net.force_atlas_2based() # Algoritmo de física melhor para grafos de argumentação
     
     for index, row in df_filtered.iterrows():
