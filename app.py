@@ -34,7 +34,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Exact labels from the supplied annotation schema, plus aliases for common variants.
 COLS = {
     "conversation": ["Conversation_id", "Conversation ID", "conversation_id"],
     "text": ["Texto", "text", "Texto original"],
@@ -108,30 +107,17 @@ def short(text, limit=42):
         return text
     return text[:limit - 1].rstrip() + "…"
 
-def node_text(kind, value, row_num):
-    prefix = {"claim": "Afirmação", "data": "Dado", "warrant": "Justificativa",
-              "rebuttal": "Refutação", "backing": "Apoio", "qualifier": "Qualificador"}[kind]
-    return f"{prefix} {row_num}"
-
 def main():
     with st.sidebar:
         st.header("1. Carregar dados")
-        uploaded = st.file_uploader("Envie sua planilha de anotações", type=["xlsx", "xls", "csv"])
-        st.caption("A planilha deve ter uma linha por anotação e colunas que identifiquem os elementos de Toulmin.")
+        uploaded = st.file_uploader("Envie a sua folha de cálculo", type=["xlsx", "xls", "csv"])
+        st.caption("A folha deve ter uma linha por anotação e colunas que identifiquem os elementos de Toulmin.")
         st.divider()
         st.header("2. Explorar")
-        st.caption("Os filtros aparecem depois que um arquivo válido é carregado.")
+        st.caption("Os filtros aparecem depois que um ficheiro válido é carregado.")
 
     if uploaded is None:
-        st.info("Comece enviando uma planilha Excel (.xlsx/.xls) ou CSV.")
-        st.markdown("### O que você poderá fazer")
-        c1, c2, c3 = st.columns(3)
-        c1.markdown("**Filtrar conversas**\n\nEscolha uma ou várias conversas para reduzir a rede.")
-        c2.markdown("**Inspecionar argumentos**\n\nSelecione uma afirmação e consulte os trechos e justificativas originais.")
-        c3.markdown("**Exportar uma seleção**\n\nBaixe as linhas filtradas para continuar sua análise.")
-        with st.expander("Formato esperado"):
-            st.write("Colunas principais: `Conversation_id`, `Texto`, e os trechos extraídos de claim, dado, warrant, rebuttal, backing e qualifier.")
-            st.write("O aplicativo também aceita os cabeçalhos completos do seu modelo de anotação.")
+        st.info("Comece por enviar um ficheiro Excel (.xlsx/.xls) ou CSV.")
         return
 
     try:
@@ -144,22 +130,19 @@ def main():
         else:
             df = pd.read_excel(uploaded)
     except Exception as exc:
-        st.error(f"Não foi possível ler o arquivo: {exc}")
+        st.error(f"Não foi possível ler o ficheiro: {exc}")
         return
 
     if df.empty:
-        st.warning("O arquivo não contém linhas.")
+        st.warning("O ficheiro não contém linhas.")
         return
 
     conv_col = find_col(df, "conversation")
     claim_col = find_col(df, "claim")
     if claim_col is None:
-        st.error("Não encontrei a coluna do trecho de afirmação (claim). Confira o cabeçalho da planilha.")
-        with st.expander("Colunas detectadas"):
-            st.write(list(df.columns))
+        st.error("Não encontrei a coluna do trecho de afirmação (claim). Confira o cabeçalho.")
         return
 
-    # Sidebar filters
     with st.sidebar:
         st.header("Filtros de exploração")
         if conv_col:
@@ -169,7 +152,6 @@ def main():
                 "Conversas",
                 options=conv_values,
                 default=conv_values[:3] if len(conv_values) > 3 else conv_values,
-                help="Deixe selecionadas apenas as conversas que deseja explorar."
             )
             if selected_convs:
                 filtered = df[df[conv_col].astype(str).isin(selected_convs)].copy()
@@ -177,7 +159,6 @@ def main():
                 filtered = df.iloc[0:0].copy()
         else:
             filtered = df.copy()
-            st.warning("A coluna Conversation_id não foi encontrada; o filtro por conversa está desativado.")
 
         query = st.text_input("Buscar texto", placeholder="Digite uma palavra ou expressão…")
         if query:
@@ -188,48 +169,103 @@ def main():
                 mask = mask | filtered[col].fillna("").astype(str).str.contains(query, case=False, regex=False)
             filtered = filtered[mask]
 
+        st.divider()
+        st.subheader("Elementos Obrigatórios")
+        req_elements = st.multiselect(
+            "Mostrar apenas anotações que contenham:",
+            options=["Dado", "Justificativa", "Refutação", "Apoio", "Qualificador"],
+            help="O grafo mostrará apenas as linhas que possuem TODOS os elementos selecionados."
+        )
+        
+        if req_elements:
+            if "Dado" in req_elements and find_col(df, "data"):
+                filtered = filtered[filtered[find_col(df, "data")].apply(clean_value) != ""]
+            if "Justificativa" in req_elements and find_col(df, "warrant"):
+                filtered = filtered[filtered[find_col(df, "warrant")].apply(clean_value) != ""]
+            if "Refutação" in req_elements and find_col(df, "rebuttal"):
+                filtered = filtered[filtered[find_col(df, "rebuttal")].apply(clean_value) != ""]
+            if "Apoio" in req_elements and find_col(df, "backing"):
+                filtered = filtered[filtered[find_col(df, "backing")].apply(clean_value) != ""]
+            if "Qualificador" in req_elements and find_col(df, "qualifier"):
+                filtered = filtered[filtered[find_col(df, "qualifier")].apply(clean_value) != ""]
+
         with st.expander("Opções de visualização"):
-            max_rows = st.slider("Máximo de anotações no grafo", min_value=10, max_value=500,
-                                 value=120, step=10)
+            max_rows = st.slider("Máximo de anotações no grafo", 10, 500, 120, 10)
             show_labels = st.checkbox("Mostrar rótulos dos nós", value=True)
             physics = st.checkbox("Permitir estabilização automática", value=True)
 
     if filtered.empty:
-        st.warning("Nenhuma anotação corresponde aos filtros. Tente selecionar outras conversas ou remover a busca.")
+        st.warning("Nenhuma anotação corresponde aos filtros.")
         return
 
-    # Metrics
     total_claims = filtered[claim_col].apply(clean_value).ne("").sum()
     metric1, metric2, metric3, metric4 = st.columns(4)
     metric1.metric("Linhas filtradas", f"{len(filtered):,}")
     metric2.metric("Afirmações encontradas", f"{total_claims:,}")
     metric3.metric("Conversas selecionadas", filtered[conv_col].nunique() if conv_col else "—")
-    element_count = sum(
-        1 for key in ["data", "warrant", "rebuttal", "backing", "qualifier"]
-        if find_col(df, key) is not None
-    )
-    metric4.metric("Tipos de elemento disponíveis", f"{element_count + 1}/6")
+    metric4.metric("Anotações renderizadas", min(len(filtered), max_rows))
 
     if len(filtered) > max_rows:
-        st.warning(f"A seleção contém {len(filtered)} linhas. Para manter a rede legível, o grafo mostra as primeiras {max_rows}; a tabela e a exportação continuam usando todos os resultados filtrados.")
         graph_df = filtered.head(max_rows)
     else:
         graph_df = filtered
 
     st.markdown("### Rede argumentativa")
-    st.caption("Passe o cursor sobre um nó para ver o trecho completo. As ligações representam relações estruturais sugeridas pelo modelo de anotação, não uma validação automática da qualidade do argumento.")
+    st.caption("Passe o cursor sobre um nó para ver o trecho completo.")
 
-    legend_items = []
-    for key, label, color, shape in ELEMENTS:
-        if find_col(df, key):
-            legend_items.append((label, color))
-    legend = st.columns(min(len(legend_items), 6) or 1)
-    for i, (label, color) in enumerate(legend_items):
-        with legend[i % len(legend)]:
-            st.markdown(f"<span style='color:{color};font-size:1.15rem'>●</span> {html.escape(label)}", unsafe_allow_html=True)
+    LEGEND_HTML = """
+    <style>
+    .legend-container { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; background: #0E1117; padding: 16px; border-radius: 12px; }
+    .legend-card { display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid #1F2937; }
+    .legend-card:last-child { border-bottom: none; padding-bottom: 0; }
+    .legend-icon-text { display: flex; align-items: center; gap: 16px; }
+    .legend-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold;}
+    .legend-title { color: #F9FAFB; font-weight: 600; font-size: 0.95rem; margin: 0; }
+    .legend-desc { color: #9CA3AF; font-size: 0.85rem; margin: 0; }
+    .badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
+    </style>
+    <div class="legend-container">
+        <div class="legend-card">
+            <div class="legend-icon-text">
+                <div class="legend-icon" style="background-color: #FFEFEF; color: #D92D20;">💬</div>
+                <div><p class="legend-title">Afirmação (Claim)</p><p class="legend-desc">A posição defendida no argumento.</p></div>
+            </div>
+            <span class="badge" style="color: #D92D20; background: rgba(217, 45, 32, 0.1);">Vermelho</span>
+        </div>
+        <div class="legend-card">
+            <div class="legend-icon-text">
+                <div class="legend-icon" style="background-color: #EEF2FF; color: #4F46E5;">📊</div>
+                <div><p class="legend-title">Dado</p><p class="legend-desc">A evidência ou informação que sustenta a afirmação.</p></div>
+            </div>
+            <span class="badge" style="color: #4F46E5; background: rgba(79, 70, 229, 0.1);">Azul</span>
+        </div>
+        <div class="legend-card">
+            <div class="legend-icon-text">
+                <div class="legend-icon" style="background-color: #ECFDF5; color: #059669;">🔗</div>
+                <div><p class="legend-title">Justificativa (Warrant)</p><p class="legend-desc">A lógica que conecta o dado à afirmação.</p></div>
+            </div>
+            <span class="badge" style="color: #059669; background: rgba(5, 150, 105, 0.1);">Verde</span>
+        </div>
+        <div class="legend-card">
+            <div class="legend-icon-text">
+                <div class="legend-icon" style="background-color: #FFFBEB; color: #D97706;">🛡️</div>
+                <div><p class="legend-title">Refutação (Rebuttal)</p><p class="legend-desc">Uma condição ou objeção que desafia a afirmação.</p></div>
+            </div>
+            <span class="badge" style="color: #D97706; background: rgba(217, 119, 6, 0.1);">Âmbar</span>
+        </div>
+        <div class="legend-card">
+            <div class="legend-icon-text">
+                <div class="legend-icon" style="background-color: #ECFEFF; color: #0891B2;">📖</div>
+                <div><p class="legend-title">Apoio adicional (Backing)</p><p class="legend-desc">O fundamento que reforça a justificativa.</p></div>
+            </div>
+            <span class="badge" style="color: #0891B2; background: rgba(8, 145, 178, 0.1);">Ciano</span>
+        </div>
+    </div>
+    """
+    st.markdown(LEGEND_HTML, unsafe_allow_html=True)
 
     net = Network(height="590px", width="100%", bgcolor="#FFFFFF", font_color="#101828",
-                  directed=True, cdn_resources="in_line")
+                  directed=True, cdn_resources="remote")
     net.set_options("""
     {
       "nodes": {"font": {"size": 14, "face": "Arial"}, "borderWidth": 1,
@@ -277,7 +313,6 @@ def main():
                      font={"color": "#912018"}, shape="box", borderWidth=2, size=24)
         added_nodes.add(claim_id)
 
-        row_node_ids = {"claim": claim_id}
         for kind, label, color, shape in ELEMENTS[1:]:
             value = values[kind]
             if not value:
@@ -291,9 +326,7 @@ def main():
                 title += f"<br><br><b>Justificativa da anotação</b><br>{html.escape(reason)}"
             net.add_node(node_id, label=node_label, title=title, color=color, shape=shape, size=18)
             added_nodes.add(node_id)
-            row_node_ids[kind] = node_id
 
-            # Explicitly label the relation; do not imply cross-row links not present in the sheet.
             relation = {
                 "data": "dá suporte a",
                 "warrant": "justifica",
@@ -325,7 +358,7 @@ def main():
         with a:
             st.markdown("**Texto original da publicação**")
             original = clean_value(row[text_col]) if text_col else ""
-            st.write(original or "Não preenchido na planilha.")
+            st.write(original or "Não preenchido na folha.")
             st.markdown("**Afirmação (claim)**")
             st.write(clean_value(row[claim_col]) or "Não preenchida.")
             if conv_col:
@@ -344,9 +377,6 @@ def main():
                         if reason:
                             st.caption("Justificativa da anotação")
                             st.write(reason)
-                        present_col = find_col(df, f"{key}_present")
-                        if present_col:
-                            st.caption(f"Presente na anotação: {clean_value(row[present_col]) or 'não informado'}")
 
     st.markdown("### Dados filtrados")
     with st.expander("Abrir tabela de anotações", expanded=False):
@@ -354,8 +384,5 @@ def main():
     csv_bytes = filtered.to_csv(index=False).encode("utf-8-sig")
     st.download_button("Baixar seleção filtrada em CSV", data=csv_bytes,
                        file_name="heiwa_anotacoes_filtradas.csv", mime="text/csv")
-
-    with st.expander("Sobre a leitura do grafo"):
-        st.write("Cada linha com claim gera um nó de afirmação. Elementos extraídos da mesma linha são ligados a essa afirmação. Esta versão não deduplica textos iguais nem identifica automaticamente quando uma afirmação de uma linha refuta outra afirmação de outra linha. Essas relações exigem uma anotação explícita ou uma etapa de análise adicional.")
 
 main()
