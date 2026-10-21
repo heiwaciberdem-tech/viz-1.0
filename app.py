@@ -78,13 +78,15 @@ COLS = {
     "qualifier_reason": ["Justificativa do trecho conter qualificador", "Justificativa do qualifier"],
 }
 
+# Atualizado com os links das imagens (Shape configurado como 'image')
+# Atualizado com os links das imagens (Shape configurado como 'image')
 ELEMENTS = [
-    ("claim", "Afirmação (claim)", "#D92D20", "box"),
-    ("data", "Dado", "#4F46E5", "dot"),
-    ("warrant", "Justificativa (warrant)", "#16A34A", "dot"),
-    ("rebuttal", "Refutação (rebuttal)", "#D97706", "triangle"),
-    ("backing", "Apoio adicional (backing)", "#0891B2", "diamond"),
-    ("qualifier", "Qualificador", "#9333EA", "ellipse"),
+    ("claim", "Afirmação (claim)", "#D92D20", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/afir-removebg-preview.png"),
+    ("data", "Dado", "#4F46E5", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/dado-removebg-preview.png"),
+    ("warrant", "Justificativa (warrant)", "#16A34A", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/download.png"),
+    ("rebuttal", "Refutação (rebuttal)", "#D97706", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/refut-removebg-preview.png"),
+    ("backing", "Apoio adicional (backing)", "#0891B2", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/%C3%ADcones/download%20(1).png"),
+    ("qualifier", "Qualificador", "#9333EA", "image", "https://ik.imagekit.io/csktgzt59/Heiwa%20IMG/New%20Folder/Gemini_Generated_Image_9mm63g9mm63g9mm6.jpg"),
 ]
 
 def find_col(df, key):
@@ -145,22 +147,23 @@ def main():
 
     with st.sidebar:
         st.header("Filtros de exploração")
-        if conv_col:
-            conv_values = df[conv_col].dropna().astype(str).unique().tolist()
-            conv_values = sorted(conv_values)
-            selected_convs = st.multiselect(
-                "Conversas",
-                options=conv_values,
-                default=conv_values[:3] if len(conv_values) > 3 else conv_values,
-            )
-            if selected_convs:
-                filtered = df[df[conv_col].astype(str).isin(selected_convs)].copy()
-            else:
-                filtered = df.iloc[0:0].copy()
+        
+        # Filtro primário alterado de ID para Claim
+        claim_values = df[claim_col].dropna().unique().tolist()
+        selected_claims = st.multiselect(
+            "Afirmações (Claims)",
+            options=claim_values,
+            default=claim_values[:3] if len(claim_values) > 3 else claim_values,
+            format_func=lambda x: short(x, 60), # Trunca visualmente para não quebrar o layout
+            help="Selecione as afirmações que atuarão como nós centrais da visualização."
+        )
+        
+        if selected_claims:
+            filtered = df[df[claim_col].isin(selected_claims)].copy()
         else:
-            filtered = df.copy()
+            filtered = df.iloc[0:0].copy()
 
-        query = st.text_input("Buscar texto", placeholder="Digite uma palavra ou expressão…")
+        query = st.text_input("Buscar texto geral", placeholder="Digite uma palavra ou expressão…")
         if query:
             search_cols = [c for c in [claim_col, find_col(df, "text"), find_col(df, "data"),
                                        find_col(df, "warrant"), find_col(df, "rebuttal")] if c]
@@ -170,11 +173,11 @@ def main():
             filtered = filtered[mask]
 
         st.divider()
-        st.subheader("Elementos Obrigatórios")
+        st.subheader("Elementos Obrigatórios (AND)")
         req_elements = st.multiselect(
             "Mostrar apenas anotações que contenham:",
             options=["Dado", "Justificativa", "Refutação", "Apoio", "Qualificador"],
-            help="O grafo mostrará apenas as linhas que possuem TODOS os elementos selecionados."
+            help="O grafo renderizará exclusivamente as linhas que possuam a interseção exata de TODOS os elementos."
         )
         
         if req_elements:
@@ -195,15 +198,15 @@ def main():
             physics = st.checkbox("Permitir estabilização automática", value=True)
 
     if filtered.empty:
-        st.warning("Nenhuma anotação corresponde aos filtros.")
+        st.warning("Nenhuma anotação corresponde aos filtros restritivos. Altere a seleção.")
         return
 
     total_claims = filtered[claim_col].apply(clean_value).ne("").sum()
     metric1, metric2, metric3, metric4 = st.columns(4)
     metric1.metric("Linhas filtradas", f"{len(filtered):,}")
-    metric2.metric("Afirmações encontradas", f"{total_claims:,}")
-    metric3.metric("Conversas selecionadas", filtered[conv_col].nunique() if conv_col else "—")
-    metric4.metric("Anotações renderizadas", min(len(filtered), max_rows))
+    metric2.metric("Afirmações analisadas", f"{total_claims:,}")
+    metric3.metric("Conversas relacionadas", filtered[conv_col].nunique() if conv_col else "—")
+    metric4.metric("Nós renderizados (Max)", min(len(filtered), max_rows))
 
     if len(filtered) > max_rows:
         graph_df = filtered.head(max_rows)
@@ -211,7 +214,6 @@ def main():
         graph_df = filtered
 
     st.markdown("### Rede argumentativa")
-    st.caption("Passe o cursor sobre um nó para ver o trecho completo.")
 
     LEGEND_HTML = """
     <style>
@@ -268,8 +270,7 @@ def main():
                   directed=True, cdn_resources="remote")
     net.set_options("""
     {
-      "nodes": {"font": {"size": 14, "face": "Arial"}, "borderWidth": 1,
-                "shadow": {"enabled": true, "size": 4, "x": 1, "y": 2}},
+      "nodes": {"font": {"size": 14, "face": "Arial"}},
       "edges": {"arrows": {"to": {"enabled": true, "scaleFactor": 0.55}},
                 "color": {"color": "#D0D5DD", "highlight": "#667085"},
                 "smooth": {"type": "dynamic"}, "font": {"size": 10, "align": "middle"}},
@@ -305,26 +306,34 @@ def main():
             continue
 
         claim_id = f"claim::{row_index}"
-        claim_label = short(claim_value, 38) if show_labels else f"Afirmação {row_label}"
+        claim_label = short(claim_value, 38) if show_labels else ""
         claim_title = f"<b>Afirmação (claim)</b><br>{html.escape(claim_value)}"
         if text_col and clean_value(row[text_col]):
             claim_title += f"<br><br><b>Texto original</b><br>{html.escape(clean_value(row[text_col]))}"
-        net.add_node(claim_id, label=claim_label, title=claim_title, color="#FEE4E2",
-                     font={"color": "#912018"}, shape="box", borderWidth=2, size=24)
+            
+        # Inserção da Imagem no Nó Central
+        _, _, _, shape, img_url = ELEMENTS[0]
+        net.add_node(claim_id, label=claim_label, title=claim_title, shape=shape, image=img_url, size=35)
         added_nodes.add(claim_id)
 
-        for kind, label, color, shape in ELEMENTS[1:]:
+        for kind, label, color, shape, img_url in ELEMENTS[1:]:
             value = values[kind]
             if not value:
                 continue
             node_id = f"{kind}::{row_index}"
-            node_label = short(value, 31) if show_labels else label
+            node_label = short(value, 31) if show_labels else ""
             reason_col = find_col(df, reason_keys[kind])
             reason = clean_value(row[reason_col]) if reason_col else ""
             title = f"<b>{html.escape(label)}</b><br>{html.escape(value)}"
             if reason:
                 title += f"<br><br><b>Justificativa da anotação</b><br>{html.escape(reason)}"
-            net.add_node(node_id, label=node_label, title=title, color=color, shape=shape, size=18)
+                
+            # Inserção da Imagem nos Nós Periféricos
+            if img_url:
+                net.add_node(node_id, label=node_label, title=title, shape="image", image=img_url, size=25)
+            else:
+                net.add_node(node_id, label=node_label, title=title, color=color, shape=shape, size=20)
+                
             added_nodes.add(node_id)
 
             relation = {
@@ -335,8 +344,7 @@ def main():
                 "qualifier": "qualifica"
             }[kind]
             edge_color = "#D97706" if kind == "rebuttal" else "#98A2B3"
-            net.add_edge(node_id, claim_id, label=relation, title=relation, color=edge_color,
-                         arrows="to")
+            net.add_edge(node_id, claim_id, label=relation, title=relation, color=edge_color, arrows="to")
 
         claim_options.append(f"{row_label} — {short(claim_value, 90)}")
         claim_rows[claim_options[-1]] = (row_index, row)
@@ -366,7 +374,7 @@ def main():
             if id_col:
                 st.caption(f"ID da anotação: {clean_value(row[id_col]) or 'não informado'}")
         with b:
-            for key, label, _, _ in ELEMENTS[1:]:
+            for key, label, _, _, _ in ELEMENTS[1:]:
                 col = type_cols[key]
                 value = clean_value(row[col]) if col else ""
                 if value:
